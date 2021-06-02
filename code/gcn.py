@@ -5,11 +5,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import os.path as osp
-import os
 import pickle
 import numpy as np
 import itertools
 import collections
+import warnings
+warnings.filterwarnings("ignore")
 
 # 保存处理好的数据
 Data = collections.namedtuple("Data", ["x", "y", "adjacency", "trn_mask", "val_mask", "test_mask"])
@@ -41,23 +42,6 @@ class CoraData(object):
     def data(self):
         """返回Data数据对象，包括x, y, adjacency, train_mask, val_mask, test_mask"""
         return self._data
-
-    # @staticmethod
-    # def download_data(url, save_path):
-    #     """数据下载工具，当原始数据不存在时将会进行下载"""
-    #     if not osp.exists(save_path):
-    #         os.makedirs(save_path)
-    #     data = request.urlopen(url)
-    #     filename = os.path.splitext(url)
-    #     with open(os.path.join(save_path, filename), 'wb') as f:
-    #         f.write(data.read())
-    #     return True
-
-    # def maybe_download(self):
-    #     save_path = os.path.join(self.data_root, "raw")
-    #     for name in self.filenames:
-    #         if not osp.exists(osp.join(save_path, name)):
-    #             self.download_data("{}/ind.cora.{}".format(self.download_url, name), save_path)
 
     def process_data(self):
         """ 处理数据，得到节点特征和标签，邻接矩阵，训练集、验证集以及测试集 """
@@ -117,7 +101,7 @@ class CoraData(object):
 
 class GraphConvolution(nn.Module):
     def __init__(self, input_dim, output_dim, use_bias=True):
-        """图卷积：L*X*\theta
+        """图卷积
         Args: ----------
         input_dim: int 节点输入特征的维度
         output_dim: int
@@ -173,34 +157,43 @@ def normalization(adjacency):
     return d_hat.dot(adjacency).dot(d_hat).tocoo()
 
 
-# 超参数定义
-learning_rate = 0.1
-weight_decay = 5e-4
-epochs = 200
-# 模型定义，包括模型实例化、损失函数与优化器定义
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = GCNNet().to(device)
-# 损失函数使用交叉熵
-criterion = nn.CrossEntropyLoss().to(device)
-# 优化器使用Adam
-optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-# 加载数据，并转换为torch.Tensor
-dataset = CoraData().data
-x = dataset.x / dataset.x.sum(1, keepdims=True)
-# 归一化数据，使得每一行和为1
-tensor_x = torch.from_numpy(x).to(device)
-tensor_y = torch.from_numpy(dataset.y).to(device)
-tensor_train_mask = torch.from_numpy(dataset.trn_mask).to(device)
-tensor_val_mask = torch.from_numpy(dataset.val_mask).to(device)
-tensor_test_mask = torch.from_numpy(dataset.test_mask).to(device)
-normalize_adjacency = normalization(dataset.adjacency)
-# 规范化邻接矩阵
-indices = torch.from_numpy(np.asarray([normalize_adjacency.row, normalize_adjacency.col])).long()
-values = torch.from_numpy(normalize_adjacency.data.astype(np.float32))
-tensor_adjacency = torch.sparse.FloatTensor(indices, values, (2708, 2708)).to(device)
+def accuracy(mask):
+    model.eval()
+    with torch.no_grad():
+        logits = model(tensor_adjacency, tensor_x)
+        test_mask_logits = logits[mask]
+        predict_y = test_mask_logits.max(1)[1]
+        accuracy = torch.eq(predict_y, tensor_y[mask]).float().mean()
+    return accuracy
 
 
-def train():
+if __name__ == "__main__":
+    # 超参数定义
+    learning_rate = 0.1
+    weight_decay = 5e-4
+    epochs = 200
+    # 模型定义，包括模型实例化、损失函数与优化器定义
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = GCNNet().to(device)
+    # 损失函数使用交叉熵
+    criterion = nn.CrossEntropyLoss().to(device)
+    # 优化器使用Adam
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # 加载数据，并转换为torch.Tensor
+    dataset = CoraData().data
+    x = dataset.x / dataset.x.sum(1, keepdims=True)
+    # 归一化数据，使得每一行和为1
+    tensor_x = torch.from_numpy(x).to(device)
+    tensor_y = torch.from_numpy(dataset.y).to(device)
+    tensor_train_mask = torch.from_numpy(dataset.trn_mask).to(device)
+    tensor_val_mask = torch.from_numpy(dataset.val_mask).to(device)
+    tensor_test_mask = torch.from_numpy(dataset.test_mask).to(device)
+    normalize_adjacency = normalization(dataset.adjacency)
+    # 规范化邻接矩阵
+    indices = torch.from_numpy(np.asarray([normalize_adjacency.row, normalize_adjacency.col])).long()
+    values = torch.from_numpy(normalize_adjacency.data.astype(np.float32))
+    tensor_adjacency = torch.sparse.FloatTensor(indices, values, (2708, 2708)).to(device)
+    # 训练
     loss_history = []
     val_acc_history = []
     model.train()
@@ -217,27 +210,26 @@ def train():
         # 反向传播计算参数的梯度
         optimizer.step()
         # 使用优化方法进行梯度更新
-        train_acc = do_test(tensor_train_mask)
+        train_acc = accuracy(tensor_train_mask)
         # 计算当前模型在训练集上的准确率
-        val_acc = do_test(tensor_val_mask)
+        val_acc = accuracy(tensor_val_mask)
         # 计算当前模型在验证集上的准确率
         # 记录训练过程中损失值和准确率的变化，用于画图
         loss_history.append(loss.item())
         val_acc_history.append(val_acc.item())
         print("Epoch {:03d}: Loss {:.4f}, TrainAcc {:.4}, ValAcc {:.4f}".format(epoch, loss.item(), train_acc.item(),
                                                                                 val_acc.item()))
-    return loss_history, val_acc_history
-
-
-def do_test(mask):
-    model.eval()
-    with torch.no_grad():
-        logits = model(tensor_adjacency, tensor_x)
-        test_mask_logits = logits[mask]
-        predict_y = test_mask_logits.max(1)[1]
-        accuracy = torch.eq(predict_y, tensor_y[mask]).float().mean()
-    return accuracy
-
-
-if __name__ == "__main__":
-    train()
+    # tsne降维，查看效果
+    from sklearn import manifold
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=501)
+    X_tsne = tsne.fit_transform(tensor_x.numpy())
+    pred = logits.max(1)[1].numpy()
+    x_min, x_max = X_tsne.min(0), X_tsne.max(0)
+    X_norm = (X_tsne - x_min) / (x_max - x_min)  # 归一化
+    plt.figure(figsize=(8, 8))
+    for i in range(X_norm.shape[0]):
+        plt.text(X_norm[i, 0], X_norm[i, 1], str(pred[i]), color=plt.cm.Set1(pred[i]),
+                 fontdict={'weight': 'bold', 'size': 9})
+    plt.xticks([])
+    plt.yticks([])
+    plt.show()
