@@ -7,5 +7,5 @@
 | Graph Embedding | [Node2Vec](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/02_GraphEmbedding_02_Node2Vec.ipynb) |      |
 |    GNN三剑客    | [GCN](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/03_GNN%E4%B8%89%E5%89%91%E5%AE%A2_01_GCN.ipynb) |      |
 |    GNN三剑客    | [GraphSAGE](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/03_GNN%E4%B8%89%E5%89%91%E5%AE%A2_02_GraphSAGE.ipynb) |      |
-|    GNN三剑客    | [GAT](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/03_GNN%E4%B8%89%E5%89%91%E5%AE%A2_03_GAT.ipynb |      |
+|    GNN三剑客    | [GAT](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/03_GNN%E4%B8%89%E5%89%91%E5%AE%A2_03_GAT.ipynb) |      |
 
