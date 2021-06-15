@@ -1,4 +1,4 @@
-
+<center>
 
 |      标题       |                             笔记                             |                             备注                             |
 | :-------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
@@ -17,3 +17,4 @@
 |       DGL       | [整图预测](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/04_DGL_07_%E6%95%B4%E5%9B%BE%E9%A2%84%E6%B5%8B.ipynb) |                                                              |
 |       DGL       | [批量训练](https://nbviewer.jupyter.org/github/zhulei227/GNN_Notes/blob/master/04_DGL_08_%E6%89%B9%E9%87%8F%E9%87%87%E6%A0%B7%E8%AE%AD%E7%BB%83.ipynb) |                                                              |
 
+</center>
